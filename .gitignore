@@ -1,0 +1,27 @@
+# Dossiers générés par Unity — jamais versionnés
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+MemoryCaptures/
+
+# Dossiers générés par Visual Studio / Rider
+.vs/
+.idea/
+*.csproj
+*.sln
+*.userprefs
+*.unityproj
+
+# Fichiers OS
+.DS_Store
+Thumbs.db
+
+# Assets importés via Package Manager (reconstruits automatiquement)
+[Pp]ackages/*/
+
+# Crashlytics
+crashlytics-build.properties
