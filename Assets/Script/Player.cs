@@ -1,10 +1,6 @@
-using System;
-using Unity.VisualScripting;
+﻿using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.XR;
-using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour
 {
@@ -26,6 +22,13 @@ public class Player : MonoBehaviour
     [SerializeField] private float _throwForce = 500.0f;
     [SerializeField] private float _authorizedForwardAngle = 70.0f;
 
+    [SerializeField] private float _jumpForce = 8.0f;
+    [SerializeField] private float _jumpCutMultiplier = 0.4f; // force coupée si on relâche
+    [SerializeField] private float _fallMultiplier = 2.5f;    // chute plus rapide
+    [SerializeField] private float _airControl = 0.3f;
+
+    private bool _isJumping = false;
+
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
@@ -43,22 +46,37 @@ public class Player : MonoBehaviour
     void Update()
     {
         Vector2 moveValue = _moveAction.ReadValue<Vector2>();
+        // ← Crée un forward/right plat (Y=0), ignorant le pitch
+        Vector3 flatForward = new Vector3(transform.forward.x, 0, transform.forward.z).normalized;
+        Vector3 flatRight = new Vector3(transform.right.x, 0, transform.right.z).normalized;
+
         if (_controller.isGrounded)
         {
-            // another way:
-            //_direction = transform.right * moveValue.x + transform.forward * moveValue.y;
-            _direction = transform.TransformDirection(moveValue.x, 0, moveValue.y);
+            _isJumping = false;
+
+            // ← Mouvement basé sur les axes plats, pas sur transform.TransformDirection
+            _direction = flatRight * moveValue.x + flatForward * moveValue.y;
             _direction *= _movingSpeed;
-            if (_jumpAction.IsPressed())
+
+            if (_jumpAction.WasPressedThisFrame())
             {
-                _direction.y = 8.0f;
-            }
-            else
-            {
-                // avoid to "jump" when look up
-                _direction.y = 0.0f;
+                _direction.y = _jumpForce;
+                _isJumping = true;
             }
         }
+        else
+        {
+            // Contrôle aérien — même correction
+            Vector3 airMove = flatRight * moveValue.x + flatForward * moveValue.y;
+            _direction.x = Mathf.Lerp(_direction.x, airMove.x * _movingSpeed, _airControl);
+            _direction.z = Mathf.Lerp(_direction.z, airMove.z * _movingSpeed, _airControl);
+
+            if (_isJumping && !_jumpAction.IsPressed() && _direction.y > 0)
+                _direction.y += Physics.gravity.y * _jumpCutMultiplier * Time.deltaTime;
+            else if (_direction.y < 0)
+                _direction.y += Physics.gravity.y * _fallMultiplier * Time.deltaTime;
+        }
+
         _direction.y += Physics.gravity.y * Time.deltaTime;
         _controller.Move(_direction * Time.deltaTime);
 
@@ -75,7 +93,7 @@ public class Player : MonoBehaviour
 
         if (_interactAction.WasPressedThisFrame())
         {
-//todo
+            //todo
         }
     }
 
@@ -104,7 +122,7 @@ public class Player : MonoBehaviour
 
     private void PlayTransportedItemSound()
     {
-        _audioSource.clip = _tranportedItem.GetComponent<IPickable>().GetAudioClip();
+        _audioSource.clip = _tranportedItem.GetComponent<IPickable>().GetThrowSound();
         _audioSource.Play();
     }
 
@@ -128,7 +146,6 @@ public class Player : MonoBehaviour
                 rb.angularVelocity = Vector3.zero;
             }
 
-            pickable.Pickup();
             _tranportedItem = other.GameObject();
             _tranportedItem.transform.parent = transform;
             _tranportedItem.transform.SetLocalPositionAndRotation(new Vector3(0, -0.75f, 1), Quaternion.identity);
@@ -142,9 +159,9 @@ public class Player : MonoBehaviour
 
     public KeyCode? GetKeyCode()
     {
-        if(_tranportedItem == null) return null;
-        Key key =  _tranportedItem.GetComponent<Key>();
-        if(key == null) return null;
+        if (_tranportedItem == null) return null;
+        Key key = _tranportedItem.GetComponent<Key>();
+        if (key == null) return null;
 
         return key.keyCode;
     }
@@ -157,13 +174,17 @@ public class Player : MonoBehaviour
 
     public void Kill()
     {
-        Debug.Log("you die");
         LevelManager levelManager = FindFirstObjectByType<LevelManager>();
         levelManager.RestartLevel("you die");
     }
 
     public void MoovToPosition(Transform point)
     {
+        if (_controller == null)
+        {
+            _controller = GetComponent<CharacterController>();
+        }
+
         _controller.enabled = false;
         transform.SetPositionAndRotation(
             point.position,

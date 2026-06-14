@@ -81,8 +81,6 @@ public class Door : MonoBehaviour
     private void PlaySound()
     {
         AudioSource audioSource = GetComponent<AudioSource>();
-        SoudManager soundManager = FindFirstObjectByType<SoudManager>();
-        audioSource.clip = soundManager.getDoorSound();
         audioSource.loop = true;
         audioSource.Play();
     }

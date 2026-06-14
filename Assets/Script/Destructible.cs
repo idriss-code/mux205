@@ -1,5 +1,3 @@
-using System.Threading;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Destructible : MonoBehaviour
@@ -8,19 +6,14 @@ public class Destructible : MonoBehaviour
     [SerializeField] private float _explosionDispertion = 10.0f;
     [SerializeField] private int _explosionQty = 10;
     [SerializeField] private Color[] _colors;
-    private int _pv; 
+    private int _pv;
 
+    private IAction[] _actions;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
         _pv = _colors.Length;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        _actions = GetComponents<IAction>();
     }
 
     void OnCollisionEnter(Collision collision)
@@ -36,7 +29,7 @@ public class Destructible : MonoBehaviour
                 return;
             }
 
-            changeColor(getCurrentColor());
+            ChangeColor(getCurrentColor());
             _pv--;
         }
     }
@@ -46,12 +39,10 @@ public class Destructible : MonoBehaviour
         return _colors[_colors.Length - _pv];
     }
 
-    private void changeColor(Color color)
+    private void ChangeColor(Color color)
     {
         MeshRenderer gameObjectRenderer = GetComponent<MeshRenderer>();
-        Material newMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        newMaterial.color = color;
-        gameObjectRenderer.material = newMaterial;
+        gameObjectRenderer.material.color = color;
     }
 
     public void Explode()
@@ -61,7 +52,7 @@ public class Destructible : MonoBehaviour
             CreateExplosion();
         }
 
-        OnDestroyAction();
+        Action();
         Destroy(gameObject);
     }
 
@@ -81,10 +72,9 @@ public class Destructible : MonoBehaviour
         Destroy(fx, 3f);
     }
 
-    private void OnDestroyAction()
+    private void Action()
     {
-        IAction action = GetComponent<IAction>();
-        if (action != null)
+        foreach (IAction action in _actions)
         {
             action.Go();
         }

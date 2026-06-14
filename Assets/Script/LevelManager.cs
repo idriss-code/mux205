@@ -41,7 +41,6 @@ public class LevelManager : MonoBehaviour
         GameObject pp = GameObject.Find("---PostProcessing---");
         _volume = pp.GetComponent<Volume>();
         _volume.weight = 1.0f;
-
         StartLevel();
     }
 
@@ -92,10 +91,13 @@ public class LevelManager : MonoBehaviour
     {
         _textMesh.text = newLevel;
 
-        yield return SceneManager.LoadSceneAsync(
-            newLevel,
-            LoadSceneMode.Additive
-        );
+        Scene existingScene = SceneManager.GetSceneByName(newLevel);
+        if (!existingScene.IsValid() || !existingScene.isLoaded)
+        {
+            yield return SceneManager.LoadSceneAsync(
+                newLevel,
+                LoadSceneMode.Additive);
+        }
 
         PostLoading(newLevel);
 
